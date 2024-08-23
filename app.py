@@ -22,7 +22,11 @@ app.layout = html.Div([
     ], className='input-container', style={'display': 'flex', 'flexDirection': 'column', 'alignItems': 'center', 'marginBottom': '20px'}),
 
     # Graficul va fi actualizat aici
-    dcc.Graph(id='stock-graph', style={'width': '100%', 'height': '60vh'})
+    dcc.Graph(
+        id='stock-graph',
+        config={'responsive': True},  # Asigură-te că graficul se ajustează automat
+        style={'width': '100%', 'height': '70vh'}  # Ajustează înălțimea pentru a se potrivi mai bine
+    )
 ])
 
 @app.callback(
@@ -78,6 +82,8 @@ def update_graph(n_clicks, symbol):
                    f'Last Close: {last_close_price_str} on {last_close_date_str} - '
                    f'Exchange: NASDAQ'),
             xaxis=dict(tickformat='%Y-%m-%d'),
+            margin=dict(l=10, r=10, t=30, b=40),  # Reduce marginile pentru mai mult spațiu
+            title=dict(x=0.5, xanchor='center'),  # Centrează titlul
             updatemenus=[
                 dict(
                     buttons=[
