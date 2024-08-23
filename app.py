@@ -103,13 +103,23 @@ def update_graph(n_clicks_search, symbol, n_clicks_5d, n_clicks_1m, n_clicks_3m,
         ))
 
         fig.update_layout(
-            title_text=(f'Price evolution for {company_name} ({symbol}) - '
-                        f'Last Close: {last_close_price_str} on {last_close_date_str} - '
-                        f'Exchange: NASDAQ'),
+            title_text=f'Price evolution for {company_name} ({symbol})',
             title_x=0.5,  # Centrează titlul
             title_xanchor='center',  # Centrează titlul
             xaxis=dict(tickformat='%Y-%m-%d'),
             margin=dict(l=10, r=10, t=60, b=40),  # Ajustează marginile pentru a oferi spațiu pentru titlu și butoane
+            annotations=[
+                dict(
+                    x=0.5,
+                    y=0.95,
+                    text=f'Last Close: {last_close_price_str} on {last_close_date_str}',
+                    showarrow=False,
+                    xref='paper',
+                    yref='paper',
+                    font=dict(size=16, color='rgba(0,0,0,0.8)'),
+                    align='center'
+                )
+            ]
         )
 
         # Setează intervalul de timp pe baza butoanelor apăsate
@@ -141,9 +151,12 @@ def update_graph(n_clicks_search, symbol, n_clicks_5d, n_clicks_1m, n_clicks_3m,
             title_text=f'Error: {str(e)}',
             xaxis=dict(tickformat='%Y-%m-%d')
         )
+        markers_state = True  # Resetăm starea markerilor în caz de eroare
 
     return fig, markers_state
 
 if __name__ == '__main__':
+    app.run_server(debug=True)
+
     app.run_server(host='0.0.0.0', port=10000, debug=True)
 
