@@ -2,7 +2,7 @@ import pandas as pd
 import yfinance as yf
 import plotly.graph_objs as go
 from datetime import datetime, timedelta
-from dash import Dash, dcc, html, Input, Output, ctx
+from dash import Dash, dcc, html, Input, Output, State, ctx
 
 # Definește data curentă și data de început
 end_date = datetime.now()
@@ -30,7 +30,6 @@ app.layout = html.Div([
         html.Button('1Y', id='button-1y', n_clicks=0),
         html.Button('5Y', id='button-5y', n_clicks=0),
         html.Button('All', id='button-all', n_clicks=0),
-        html.Button('Markers On/Off', id='button-markers', n_clicks=0),
     ], style={'display': 'flex', 'flexWrap': 'wrap', 'justifyContent': 'center', 'marginBottom': '20px'}),
 
     # Graficul va fi actualizat aici
@@ -40,34 +39,47 @@ app.layout = html.Div([
         style={'width': '100%', 'height': '70vh'}  # Ajustează înălțimea pentru a se potrivi mai bine
     ),
 
-    # Stocarea stării markerilor
-    dcc.Store(id='markers-state', data=True),  # True indică markerii activi inițial
-    dcc.Store(id='current-range', data={'start': None, 'end': None})  # Stocăm intervalul curent
+    # Stocarea intervalului curent și simbolului curent
+    dcc.Store(id='current-range', data={'start': None, 'end': None}),  # Stocăm intervalul curent
+    dcc.Store(id='current-symbol', data='AAPL'),  # Stocăm simbolul curent
+    dcc.Store(id='initial-load', data=True)  # Indică că aplicația s-a încărcat inițial
 ])
 
 @app.callback(
-    Output('stock-graph', 'figure'),
-    Output('markers-state', 'data'),
-    Output('current-range', 'data'),
-    Input('search-button', 'n_clicks'),
-    Input('stock-symbol', 'value'),
-    Input('button-5d', 'n_clicks'),
-    Input('button-1m', 'n_clicks'),
-    Input('button-3m', 'n_clicks'),
-    Input('button-6m', 'n_clicks'),
-    Input('button-1y', 'n_clicks'),
-    Input('button-5y', 'n_clicks'),
-    Input('button-all', 'n_clicks'),
-    Input('button-markers', 'n_clicks'),
-    Input('current-range', 'data'),
-    prevent_initial_call=True
+    [Output('stock-graph', 'figure'),
+     Output('current-range', 'data'),
+     Output('current-symbol', 'data'),
+     Output('initial-load', 'data')],
+    [Input('search-button', 'n_clicks'),
+     Input('stock-symbol', 'value'),
+     Input('button-5d', 'n_clicks'),
+     Input('button-1m', 'n_clicks'),
+     Input('button-3m', 'n_clicks'),
+     Input('button-6m', 'n_clicks'),
+     Input('button-1y', 'n_clicks'),
+     Input('button-5y', 'n_clicks'),
+     Input('button-all', 'n_clicks'),
+     Input('initial-load', 'data')],
+    [State('current-range', 'data'),
+     State('current-symbol', 'data')]
 )
-def update_graph(n_clicks_search, symbol, n_clicks_5d, n_clicks_1m, n_clicks_3m, n_clicks_6m, n_clicks_1y, n_clicks_5y, n_clicks_all, n_clicks_markers, current_range):
-    markers_state = True  # Valoare implicită
+def update_graph(n_clicks_search, symbol, n_clicks_5d, n_clicks_1m, n_clicks_3m, n_clicks_6m, n_clicks_1y, n_clicks_5y, n_clicks_all, initial_load, current_range, current_symbol):
+    if initial_load:  # Verificăm dacă aplicația s-a încărcat inițial
+        symbol = 'AAPL'
+        initial_load = False  # Setează pentru a evita apelarea repetată
+
     try:
-        if not symbol:
-            symbol = 'AAPL'
+        # Verifică dacă simbolul este setat implicit la încărcare
+        if symbol is None:
+            symbol = current_symbol
         
+        if not symbol:
+            symbol = current_symbol  # Folosește simbolul curent dacă nu este specificat
+        
+        if symbol != current_symbol:
+            # Dacă simbolul s-a schimbat, actualizează intervalul
+            current_range = {'start': None, 'end': None}
+
         # Descarcă datele pentru simbolul bursier
         df = yf.download(symbol, start=start_date, end=end_date)
         if df.empty:
@@ -95,16 +107,12 @@ def update_graph(n_clicks_search, symbol, n_clicks_5d, n_clicks_1m, n_clicks_3m,
 
         fig = go.Figure()
 
-        # Determinăm dacă markerii sunt activi sau nu
-        show_markers = ctx.triggered and 'button-markers' in ctx.triggered[0]['prop_id']
-        mode = 'lines+markers' if show_markers else 'lines'
-
+        # Adăugăm doar linia fără markeri
         fig.add_trace(go.Scatter(
             x=df['Date'],
             y=df['Close'],
-            mode=mode,  # Utilizează starea markerilor
+            mode='lines',  # Utilizăm doar linii fără markeri
             name=f'{symbol} - Preț de Închidere',
-            marker=dict(size=8),
             text=[f"Date: {date}<br>Close: {close:.2f}<br>Open: {open:.2f}<br>High: {high:.2f}<br>Low: {low:.2f}<br>Volume: {volume}<br>Symbol: {symbol}" 
                   for date, close, open, high, low, volume in zip(df['Date'], df['Close'], df['Open'], df['High'], df['Low'], df['Volume'])],
             hoverinfo='text'
@@ -137,11 +145,12 @@ def update_graph(n_clicks_search, symbol, n_clicks_5d, n_clicks_1m, n_clicks_3m,
 
         else:
             # Dacă nu este niciun buton apăsat, utilizează intervalul de timp curent
-            if current_range and current_range['start'] and current_range['end']:
+            if current_range['start'] and current_range['end']:
                 fig.update_xaxes(range=[current_range['start'], current_range['end']])
             else:
-                # Dacă intervalul curent nu este definit, setăm intervalul complet al datelor
-                fig.update_xaxes(range=[df['Date'].min(), df['Date'].max()])
+                # Setează intervalul inițial
+                current_range = {'start': df['Date'].min(), 'end': df['Date'].max()}
+                fig.update_xaxes(range=[current_range['start'], current_range['end']])
 
         fig.update_layout(
             title=f'Price evolution for {company_name} ({symbol})<br>Last Close: {last_close_price_str} on {last_close_date_str}',
@@ -158,11 +167,11 @@ def update_graph(n_clicks_search, symbol, n_clicks_5d, n_clicks_1m, n_clicks_3m,
             xaxis=dict(tickformat='%Y-%m-%d'),
             margin=dict(l=10, r=10, t=100, b=40)  # Ajustează marginile pentru a oferi spațiu pentru titlu
         )
-        markers_state = True  # Resetăm starea markerilor în caz de eroare
-        # Asigurăm că intervalul este definit
+        # Asigurăm că intervalul și simbolul sunt definite
         current_range = {'start': start_date.date(), 'end': end_date.date()}
+        current_symbol = 'AAPL'  # Folosește simbolul default în caz de eroare
 
-    return fig, markers_state, current_range
+    return fig, current_range, current_symbol, initial_load
 
 if __name__ == '__main__':
     app.run_server(host='0.0.0.0', port=10000, debug=True)
