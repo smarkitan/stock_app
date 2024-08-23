@@ -35,7 +35,15 @@ app.layout = html.Div([
     # Graficul va fi actualizat aici
     dcc.Graph(
         id='stock-graph',
-        config={'responsive': True},  # Asigură-te că graficul se ajustează automat
+        config={
+            'displayModeBar': False,  # Dezactivează bara de mod
+            'displaylogo': False,     # Dezactivează logo-ul Plotly
+            'editable': False,        # Dezactivează opțiunea de editare
+            'scrollZoom': False,      # Dezactivează zoom-ul cu scroll
+            'showTips': False,        # Dezactivează tooltips
+            'showAxisDragHandles': False,  # Dezactivează manipulatoarele de dragare a axelor
+            'modeBarButtonsToRemove': ['zoom', 'pan', 'resetScale2d', 'hoverClosestCartesian', 'hoverCompareCartesian', 'toImage', 'sendDataToCloud']
+        },
         style={'width': '100%', 'height': '70vh'}  # Ajustează înălțimea pentru a se potrivi mai bine
     ),
 
@@ -119,29 +127,28 @@ def update_graph(n_clicks_search, symbol, n_clicks_5d, n_clicks_1m, n_clicks_3m,
         ))
 
         # Setăm intervalul de timp pe baza butoanelor apăsate
-        if ctx.triggered:
-            button_id = ctx.triggered[0]['prop_id'].split('.')[0]
-            if button_id in ['button-5d', 'button-1m', 'button-3m', 'button-6m', 'button-1y', 'button-5y', 'button-all']:
-                if button_id == 'button-5d':
-                    new_range = {'start': df['Date'].max() - timedelta(days=5), 'end': df['Date'].max()}
-                elif button_id == 'button-1m':
-                    new_range = {'start': df['Date'].max() - timedelta(days=30), 'end': df['Date'].max()}
-                elif button_id == 'button-3m':
-                    new_range = {'start': df['Date'].max() - timedelta(days=93), 'end': df['Date'].max()}
-                elif button_id == 'button-6m':
-                    new_range = {'start': df['Date'].max() - timedelta(days=182), 'end': df['Date'].max()}
-                elif button_id == 'button-1y':
-                    new_range = {'start': df['Date'].max() - timedelta(days=365), 'end': df['Date'].max()}
-                elif button_id == 'button-5y':
-                    new_range = {'start': df['Date'].max() - timedelta(days=1825), 'end': df['Date'].max()}
-                elif button_id == 'button-all':
-                    new_range = {'start': df['Date'].min(), 'end': df['Date'].max()}
-                
-                # Actualizează graficul cu intervalul de timp selectat
-                fig.update_xaxes(range=[new_range['start'], new_range['end']])
-                
-                # Salvează intervalul curent
-                current_range = new_range
+        if ctx.triggered_id and ctx.triggered_id.startswith('button'):
+            button_id = ctx.triggered_id
+            if button_id == 'button-5d':
+                new_range = {'start': df['Date'].max() - timedelta(days=5), 'end': df['Date'].max()}
+            elif button_id == 'button-1m':
+                new_range = {'start': df['Date'].max() - timedelta(days=30), 'end': df['Date'].max()}
+            elif button_id == 'button-3m':
+                new_range = {'start': df['Date'].max() - timedelta(days=93), 'end': df['Date'].max()}
+            elif button_id == 'button-6m':
+                new_range = {'start': df['Date'].max() - timedelta(days=182), 'end': df['Date'].max()}
+            elif button_id == 'button-1y':
+                new_range = {'start': df['Date'].max() - timedelta(days=365), 'end': df['Date'].max()}
+            elif button_id == 'button-5y':
+                new_range = {'start': df['Date'].max() - timedelta(days=1825), 'end': df['Date'].max()}
+            elif button_id == 'button-all':
+                new_range = {'start': df['Date'].min(), 'end': df['Date'].max()}
+
+            # Actualizează graficul cu intervalul de timp selectat
+            fig.update_xaxes(range=[new_range['start'], new_range['end']])
+
+            # Salvează intervalul curent
+            current_range = new_range
 
         else:
             # Dacă nu este niciun buton apăsat, utilizează intervalul de timp curent
