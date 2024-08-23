@@ -13,16 +13,16 @@ app = Dash(__name__)
 
 # Layout-ul aplicației
 app.layout = html.Div([
-    html.H1('Stock Price Evolution'),
+    html.H1('Stock Price Evolution', style={'textAlign': 'center', 'marginBottom': '20px'}),
 
     # Text box pentru simbolul bursier și butonul de căutare
     html.Div([
-        dcc.Input(id='stock-symbol', type='text', value='AAPL', style={'marginRight': '10px'}),
-        html.Button('Search Stock', id='search-button', n_clicks=0)
-    ], style={'marginBottom': '20px'}),
+        dcc.Input(id='stock-symbol', type='text', value='AAPL', style={'marginRight': '10px', 'width': '60%'}),
+        html.Button('Search Stock', id='search-button', n_clicks=0, style={'width': '30%'})
+    ], className='input-container', style={'display': 'flex', 'flexDirection': 'column', 'alignItems': 'center', 'marginBottom': '20px'}),
 
     # Graficul va fi actualizat aici
-    dcc.Graph(id='stock-graph')
+    dcc.Graph(id='stock-graph', style={'width': '100%', 'height': '60vh'})
 ])
 
 @app.callback(
