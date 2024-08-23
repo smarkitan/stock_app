@@ -41,12 +41,14 @@ app.layout = html.Div([
     ),
 
     # Stocarea stării markerilor
-    dcc.Store(id='markers-state', data=True)  # True indică markerii activi inițial
+    dcc.Store(id='markers-state', data=True),  # True indică markerii activi inițial
+    dcc.Store(id='current-range', data={'start': None, 'end': None})  # Stocăm intervalul curent
 ])
 
 @app.callback(
     Output('stock-graph', 'figure'),
     Output('markers-state', 'data'),
+    Output('current-range', 'data'),
     Input('search-button', 'n_clicks'),
     Input('stock-symbol', 'value'),
     Input('button-5d', 'n_clicks'),
@@ -57,13 +59,15 @@ app.layout = html.Div([
     Input('button-5y', 'n_clicks'),
     Input('button-all', 'n_clicks'),
     Input('button-markers', 'n_clicks'),
-    Input('markers-state', 'data')
+    Input('current-range', 'data'),
+    prevent_initial_call=True
 )
-def update_graph(n_clicks_search, symbol, n_clicks_5d, n_clicks_1m, n_clicks_3m, n_clicks_6m, n_clicks_1y, n_clicks_5y, n_clicks_all, n_clicks_markers, markers_state):
-    if not symbol:
-        symbol = 'AAPL'
-    
+def update_graph(n_clicks_search, symbol, n_clicks_5d, n_clicks_1m, n_clicks_3m, n_clicks_6m, n_clicks_1y, n_clicks_5y, n_clicks_all, n_clicks_markers, current_range):
+    markers_state = True  # Valoare implicită
     try:
+        if not symbol:
+            symbol = 'AAPL'
+        
         # Descarcă datele pentru simbolul bursier
         df = yf.download(symbol, start=start_date, end=end_date)
         if df.empty:
@@ -91,10 +95,14 @@ def update_graph(n_clicks_search, symbol, n_clicks_5d, n_clicks_1m, n_clicks_3m,
 
         fig = go.Figure()
 
+        # Determinăm dacă markerii sunt activi sau nu
+        show_markers = ctx.triggered and 'button-markers' in ctx.triggered[0]['prop_id']
+        mode = 'lines+markers' if show_markers else 'lines'
+
         fig.add_trace(go.Scatter(
             x=df['Date'],
             y=df['Close'],
-            mode='lines+markers' if markers_state else 'lines',  # Utilizează starea markerilor
+            mode=mode,  # Utilizează starea markerilor
             name=f'{symbol} - Preț de Închidere',
             marker=dict(size=8),
             text=[f"Date: {date}<br>Close: {close:.2f}<br>Open: {open:.2f}<br>High: {high:.2f}<br>Low: {low:.2f}<br>Volume: {volume}<br>Symbol: {symbol}" 
@@ -102,61 +110,60 @@ def update_graph(n_clicks_search, symbol, n_clicks_5d, n_clicks_1m, n_clicks_3m,
             hoverinfo='text'
         ))
 
-        fig.update_layout(
-            title_text=f'Price evolution for {company_name} ({symbol})',
-            title_x=0.5,  # Centrează titlul
-            title_xanchor='center',  # Centrează titlul
-            xaxis=dict(tickformat='%Y-%m-%d'),
-            margin=dict(l=10, r=10, t=60, b=40),  # Ajustează marginile pentru a oferi spațiu pentru titlu și butoane
-            annotations=[
-                dict(
-                    x=0.5,
-                    y=0.95,
-                    text=f'Last Close: {last_close_price_str} on {last_close_date_str}',
-                    showarrow=False,
-                    xref='paper',
-                    yref='paper',
-                    font=dict(size=16, color='rgba(0,0,0,0.8)'),
-                    align='center'
-                )
-            ]
-        )
-
-        # Setează intervalul de timp pe baza butoanelor apăsate
+        # Setăm intervalul de timp pe baza butoanelor apăsate
         if ctx.triggered:
             button_id = ctx.triggered[0]['prop_id'].split('.')[0]
-            if button_id == 'button-5d':
-                fig.update_xaxes(range=[df['Date'].max() - timedelta(days=5), df['Date'].max()])
-            elif button_id == 'button-1m':
-                fig.update_xaxes(range=[df['Date'].max() - timedelta(days=30), df['Date'].max()])
-            elif button_id == 'button-3m':
-                fig.update_xaxes(range=[df['Date'].max() - timedelta(days=93), df['Date'].max()])
-            elif button_id == 'button-6m':
-                fig.update_xaxes(range=[df['Date'].max() - timedelta(days=182), df['Date'].max()])
-            elif button_id == 'button-1y':
-                fig.update_xaxes(range=[df['Date'].max() - timedelta(days=365), df['Date'].max()])
-            elif button_id == 'button-5y':
-                fig.update_xaxes(range=[df['Date'].max() - timedelta(days=1825), df['Date'].max()])
-            elif button_id == 'button-all':
+            if button_id in ['button-5d', 'button-1m', 'button-3m', 'button-6m', 'button-1y', 'button-5y', 'button-all']:
+                if button_id == 'button-5d':
+                    new_range = {'start': df['Date'].max() - timedelta(days=5), 'end': df['Date'].max()}
+                elif button_id == 'button-1m':
+                    new_range = {'start': df['Date'].max() - timedelta(days=30), 'end': df['Date'].max()}
+                elif button_id == 'button-3m':
+                    new_range = {'start': df['Date'].max() - timedelta(days=93), 'end': df['Date'].max()}
+                elif button_id == 'button-6m':
+                    new_range = {'start': df['Date'].max() - timedelta(days=182), 'end': df['Date'].max()}
+                elif button_id == 'button-1y':
+                    new_range = {'start': df['Date'].max() - timedelta(days=365), 'end': df['Date'].max()}
+                elif button_id == 'button-5y':
+                    new_range = {'start': df['Date'].max() - timedelta(days=1825), 'end': df['Date'].max()}
+                elif button_id == 'button-all':
+                    new_range = {'start': df['Date'].min(), 'end': df['Date'].max()}
+                
+                # Actualizează graficul cu intervalul de timp selectat
+                fig.update_xaxes(range=[new_range['start'], new_range['end']])
+                
+                # Salvează intervalul curent
+                current_range = new_range
+
+        else:
+            # Dacă nu este niciun buton apăsat, utilizează intervalul de timp curent
+            if current_range and current_range['start'] and current_range['end']:
+                fig.update_xaxes(range=[current_range['start'], current_range['end']])
+            else:
+                # Dacă intervalul curent nu este definit, setăm intervalul complet al datelor
                 fig.update_xaxes(range=[df['Date'].min(), df['Date'].max()])
 
-            if button_id == 'button-markers':
-                # Inversează starea markerilor și actualizează
-                markers_state = not markers_state
+        fig.update_layout(
+            title=f'Price evolution for {company_name} ({symbol})<br>Last Close: {last_close_price_str} on {last_close_date_str}',
+            title_x=0.5,  # Centrează titlul
+            xaxis=dict(tickformat='%Y-%m-%d'),
+            margin=dict(l=10, r=10, t=100, b=40)  # Ajustează marginile pentru a oferi spațiu pentru titlu
+        )
 
     except Exception as e:
         # Dacă există o eroare, arată un grafic gol cu mesajul de eroare
         fig = go.Figure()
         fig.update_layout(
-            title_text=f'Error: {str(e)}',
-            xaxis=dict(tickformat='%Y-%m-%d')
+            title=f'Error: {str(e)}',
+            xaxis=dict(tickformat='%Y-%m-%d'),
+            margin=dict(l=10, r=10, t=100, b=40)  # Ajustează marginile pentru a oferi spațiu pentru titlu
         )
         markers_state = True  # Resetăm starea markerilor în caz de eroare
+        # Asigurăm că intervalul este definit
+        current_range = {'start': start_date.date(), 'end': end_date.date()}
 
-    return fig, markers_state
+    return fig, markers_state, current_range
 
 if __name__ == '__main__':
-    app.run_server(debug=True)
-
     app.run_server(host='0.0.0.0', port=10000, debug=True)
 
