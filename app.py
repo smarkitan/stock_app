@@ -59,7 +59,6 @@ app.layout = html.Div([
      Output('current-symbol', 'data'),
      Output('initial-load', 'data')],
     [Input('search-button', 'n_clicks'),
-     Input('crypto-symbol', 'n_submit'),  # Noua intrare pentru n_submit
      Input('stock-symbol', 'value'),
      Input('button-5d', 'n_clicks'),
      Input('button-1m', 'n_clicks'),
