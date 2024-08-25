@@ -59,6 +59,7 @@ app.layout = html.Div([
      Output('current-symbol', 'data'),
      Output('initial-load', 'data')],
     [Input('search-button', 'n_clicks'),
+     Input('crypto-symbol', 'n_submit'),  # Noua intrare pentru n_submit
      Input('stock-symbol', 'value'),
      Input('button-5d', 'n_clicks'),
      Input('button-1m', 'n_clicks'),
@@ -181,5 +182,5 @@ def update_graph(n_clicks_search, symbol, n_clicks_5d, n_clicks_1m, n_clicks_3m,
     return fig, current_range, current_symbol, initial_load
 
 if __name__ == '__main__':
-    app.run_server(host='0.0.0.0', port=10000, debug=True)
+    app.run_server(host='0.0.0.0', port=10000, debug=False)
 
