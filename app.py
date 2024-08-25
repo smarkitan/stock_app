@@ -59,6 +59,7 @@ app.layout = html.Div([
      Output('current-symbol', 'data'),
      Output('initial-load', 'data')],
     [Input('search-button', 'n_clicks'),
+     Input('crypto-symbol', 'n_submit'),
      Input('stock-symbol', 'value'),
      Input('button-5d', 'n_clicks'),
      Input('button-1m', 'n_clicks'),
@@ -71,7 +72,7 @@ app.layout = html.Div([
     [State('current-range', 'data'),
      State('current-symbol', 'data')]
 )
-def update_graph(n_clicks_search, symbol, n_clicks_5d, n_clicks_1m, n_clicks_3m, n_clicks_6m, n_clicks_1y, n_clicks_5y, n_clicks_all, initial_load, current_range, current_symbol):
+def update_graph(n_clicks_search, n_submit, symbol, n_clicks_5d, n_clicks_1m, n_clicks_3m, n_clicks_6m, n_clicks_1y, n_clicks_5y, n_clicks_all, initial_load, current_range, current_symbol):
     if initial_load:  # Verificăm dacă aplicația s-a încărcat inițial
         symbol = 'AAPL'
         initial_load = False  # Setează pentru a evita apelarea repetată
