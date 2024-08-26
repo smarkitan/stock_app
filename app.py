@@ -50,14 +50,18 @@ app.layout = html.Div([
     # Storing the current range and current symbol
     dcc.Store(id='current-range', data={'start': None, 'end': None}),  # Store current range
     dcc.Store(id='current-symbol', data='AAPL'),  # Store current symbol
-    dcc.Store(id='initial-load', data=True)  # Indicate initial load
+    dcc.Store(id='initial-load', data=True),  # Indicate initial load
+
+    # Loading message
+    html.Div(id='loading-message', style={'textAlign': 'center', 'marginTop': '20px', 'color': 'red'})
 ])
 
 @app.callback(
     [Output('stock-graph', 'figure'),
      Output('current-range', 'data'),
      Output('current-symbol', 'data'),
-     Output('initial-load', 'data')],
+     Output('initial-load', 'data'),
+     Output('loading-message', 'children')],
     [Input('search-button', 'n_clicks'),
      Input('stock-symbol', 'n_submit'),
      Input('button-5d', 'n_clicks'),
@@ -75,6 +79,13 @@ app.layout = html.Div([
 def update_graph(n_clicks_search, n_submit, n_clicks_5d, n_clicks_1m, n_clicks_3m, n_clicks_6m, n_clicks_1y, n_clicks_5y, n_clicks_all, initial_load, symbol_input, current_range, current_symbol):
     triggered_id = ctx.triggered_id
     symbol = symbol_input.upper() if triggered_id in ['search-button', 'stock-symbol'] else current_symbol
+
+    # Initialize loading message
+    loading_message = ""
+
+    # If the app is loading for the first time
+    if initial_load:
+        loading_message = "The page is loading from a web service that has just started. Please wait..."
     
     # If the symbol has changed, reset the range
     if symbol != current_symbol:
@@ -88,7 +99,7 @@ def update_graph(n_clicks_search, n_submit, n_clicks_5d, n_clicks_1m, n_clicks_3
         elif button_id == 'button-1m':
             new_range = {'start': datetime.now().date() - timedelta(days=30), 'end': datetime.now().date()}
         elif button_id == 'button-3m':
-            new_range = {'start': datetime.now().date() - timedelta(days=93), 'end': datetime.now().date()}
+            new_range = {'start': datetime.now().date() - timedelta(days=90), 'end': datetime.now().date()}
         elif button_id == 'button-6m':
             new_range = {'start': datetime.now().date() - timedelta(days=182), 'end': datetime.now().date()}
         elif button_id == 'button-1y':
@@ -151,6 +162,11 @@ def update_graph(n_clicks_search, n_submit, n_clicks_5d, n_clicks_1m, n_clicks_3
             margin=dict(l=10, r=10, t=100, b=40)
         )
 
+        # Reset loading message after initial load
+        if initial_load:
+            loading_message = ""
+            initial_load = False
+
     except Exception as e:
         fig = go.Figure()
         fig.update_layout(
@@ -161,7 +177,7 @@ def update_graph(n_clicks_search, n_submit, n_clicks_5d, n_clicks_1m, n_clicks_3
         current_range = {'start': start_date.date(), 'end': end_date.date()}
         current_symbol = 'AAPL'
 
-    return fig, current_range, symbol, initial_load
+    return fig, current_range, symbol, initial_load, loading_message
 
 if __name__ == '__main__':
     app.run_server(host='0.0.0.0', port=10000, debug=False)
